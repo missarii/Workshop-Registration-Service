@@ -1,0 +1,125 @@
+// This is your Prisma schema file
+// Learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+  STAFF
+}
+
+enum WorkshopStatus {
+  SCHEDULED
+  CANCELLED
+  COMPLETED
+}
+
+enum RegistrationStatus {
+  ACTIVE
+  CANCELLED
+  WAITLISTED
+}
+
+enum AuditAction {
+  USER_CREATED
+  USER_UPDATED
+  USER_DEACTIVATED
+  WORKSHOP_CREATED
+  WORKSHOP_UPDATED
+  WORKSHOP_CANCELLED
+  REGISTRATION_CREATED
+  REGISTRATION_CANCELLED
+  WAITLIST_PROMOTED
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  role         Role
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  registrationsCreated Registration[] @relation("RegisteredBy")
+  registrationsCancelled Registration[] @relation("CancelledBy")
+  auditLogs            AuditLog[]
+
+  @@map("users")
+}
+
+model Location {
+  id        String     @id @default(cuid())
+  name      String
+  address   String
+  active    Boolean    @default(true)
+  createdAt DateTime   @default(now()) @map("created_at")
+  workshops Workshop[]
+
+  @@map("locations")
+}
+
+model Workshop {
+  id            String         @id @default(cuid())
+  code          String         @unique
+  title         String
+  description   String?
+  instructor    String
+  locationId    String         @map("location_id")
+  startsAt      DateTime       @map("starts_at")
+  endsAt        DateTime       @map("ends_at")
+  capacity      Int
+  reservedSeats Int            @default(0) @map("reserved_seats")
+  status        WorkshopStatus @default(SCHEDULED)
+  cancelReason  String?        @map("cancel_reason")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+
+  location      Location       @relation(fields: [locationId], references: [id])
+  registrations Registration[]
+
+  @@map("workshops")
+}
+
+model Registration {
+  id             String             @id @default(cuid())
+  workshopId     String             @map("workshop_id")
+  attendeeName   String             @map("attendee_name")
+  attendeeEmail  String             @map("attendee_email")
+  status         RegistrationStatus @default(ACTIVE)
+  waitlistPosition Int?             @map("waitlist_position")
+  registeredById String             @map("registered_by_id")
+  registeredAt   DateTime           @default(now()) @map("registered_at")
+  cancelledById  String?            @map("cancelled_by_id")
+  cancelledAt    DateTime?          @map("cancelled_at")
+
+  workshop      Workshop  @relation(fields: [workshopId], references: [id])
+  registeredBy  User      @relation("RegisteredBy", fields: [registeredById], references: [id])
+  cancelledBy   User?     @relation("CancelledBy", fields: [cancelledById], references: [id])
+
+  @@unique([workshopId, attendeeEmail, status], name: "unique_active_registration")
+  @@map("registrations")
+}
+
+model AuditLog {
+  id         String      @id @default(cuid())
+  actorId    String      @map("actor_id")
+  action     AuditAction
+  entityType String      @map("entity_type")
+  entityId   String      @map("entity_id")
+  metadata   Json?
+  createdAt  DateTime    @default(now()) @map("created_at")
+
+  actor User @relation(fields: [actorId], references: [id])
+
+  @@map("audit_logs")
+}

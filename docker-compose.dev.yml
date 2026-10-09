@@ -1,0 +1,31 @@
+# Local development override — no build required, uses source directly
+version: '3.9'
+
+services:
+  postgres:
+    ports:
+      - "5432:5432"
+
+  api:
+    build: ~
+    image: ~
+    volumes:
+      - ./apps/api:/app
+      - /app/node_modules
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://workshop:workshop_secret@postgres:5432/workshop_db
+      JWT_SECRET: dev-jwt-secret-not-for-production
+      JWT_EXPIRES_IN: 8h
+      PORT: 3001
+    command: pnpm dev
+
+  web:
+    build: ~
+    image: ~
+    volumes:
+      - ./apps/web:/app
+      - /app/node_modules
+    environment:
+      VITE_API_URL: http://localhost:3001
+    command: pnpm dev

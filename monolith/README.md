@@ -83,16 +83,16 @@ monolith/
 | POST    | /api/auth/login                       | Public              |
 | POST    | /api/auth/logout                      | Authenticated       |
 | GET     | /api/auth/me                          | Authenticated       |
-| GET     | /api/dashboard                        | Any authenticated   |
-| GET     | /api/workshops                        | Any authenticated   |
-| GET     | /api/workshops/:id                    | Any authenticated   |
-| POST    | /api/workshops                        | Manager, Admin      |
-| PATCH   | /api/workshops/:id                    | Manager, Admin      |
-| GET     | /api/workshops/:id/registrations      | Any authenticated   |
-| POST    | /api/workshops/:id/registrations      | Any authenticated   |
-| POST    | /api/registrations/:id/cancel         | Any authenticated   |
-| GET     | /api/registrations/:id/history        | Any authenticated   |
-| GET     | /api/registrations/history            | Any authenticated   |
+| GET     | /api/dashboard                        | Manager, Staff      |
+| GET     | /api/workshops                        | Manager, Staff      |
+| GET     | /api/workshops/:id                    | Manager, Staff      |
+| POST    | /api/workshops                        | Manager only        |
+| PATCH   | /api/workshops/:id                    | Manager only        |
+| GET     | /api/workshops/:id/registrations      | Manager, Staff      |
+| POST    | /api/workshops/:id/registrations      | Manager, Staff      |
+| POST    | /api/registrations/:id/cancel         | Manager, Staff      |
+| GET     | /api/registrations/:id/history        | Manager, Staff      |
+| GET     | /api/registrations/history            | Manager, Staff      |
 | GET     | /api/users                            | Admin only          |
 | POST    | /api/users                            | Admin only          |
 | PATCH   | /api/users/:id                        | Admin only          |
@@ -119,11 +119,11 @@ This serializes concurrent registrations for the same workshop. Registrations fo
 
 | Action                        | Staff | Manager | Admin |
 |-------------------------------|-------|---------|-------|
-| View workshops                | ✅    | ✅      | ✅    |
-| Create/edit workshops         | ❌    | ✅      | ✅    |
-| Register attendees            | ✅    | ✅      | ✅    |
-| Cancel registrations          | ✅    | ✅      | ✅    |
-| View history                  | ✅    | ✅      | ✅    |
+| View workshops                | ✅    | ✅      | ❌    |
+| Create/edit workshops         | ❌    | ✅      | ❌    |
+| Register attendees            | ✅    | ✅      | ❌    |
+| Cancel registrations          | ✅    | ✅      | ❌    |
+| View history                  | ✅    | ✅      | ❌    |
 | Manage users                  | ❌    | ❌      | ✅    |
 
 ## Environment Variables

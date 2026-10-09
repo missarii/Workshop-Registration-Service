@@ -1,0 +1,1535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Workshop Registration Service</title>
+  <meta name="description" content="Staff portal for managing workshop registrations, capacity, and attendees." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    /* ═══════════════════════════════════════════════════════════
+       DESIGN TOKENS
+    ═══════════════════════════════════════════════════════════ */
+    :root {
+      /* Paynext light-purple theme — inspired by attached reference */
+      --bg-primary: #f2f0fb;
+      --bg-secondary: #ece8f9;
+      --bg-card: #ffffff;
+      --bg-card-hover: #f7f5ff;
+      --bg-input: #f4f2fc;
+      --bg-modal: #ffffff;
+
+      --border: #e2dcf5;
+      --border-focus: #6d5ef0;
+      --border-subtle: #efeafc;
+
+      --text-primary: #221d3e;
+      --text-secondary: #5f587e;
+      --text-muted: #8e87ad;
+      --text-accent: #6d5ef0;
+
+      --accent: #6d5ef0;
+      --accent-hover: #5848e0;
+      --accent-light: rgba(109, 94, 240, 0.12);
+      --accent-glow: rgba(109, 94, 240, 0.25);
+
+      --hero-1: #2a1f5c;
+      --hero-2: #5b4bc4;
+      --hero-3: #8b7cf6;
+
+      --success: #16a34a;
+      --success-bg: rgba(22, 163, 74, 0.1);
+      --warning: #d97706;
+      --warning-bg: rgba(217, 119, 6, 0.12);
+      --danger: #dc2626;
+      --danger-bg: rgba(220, 38, 38, 0.08);
+      --info: #0284c7;
+      --info-bg: rgba(2, 132, 199, 0.1);
+
+      --radius-sm: 8px;
+      --radius: 12px;
+      --radius-lg: 16px;
+      --radius-xl: 24px;
+
+      --shadow-sm: 0 1px 3px rgba(42, 31, 92, 0.08);
+      --shadow: 0 4px 16px rgba(42, 31, 92, 0.1);
+      --shadow-lg: 0 12px 36px rgba(42, 31, 92, 0.16);
+      --shadow-accent: 0 6px 24px rgba(109, 94, 240, 0.3);
+
+      --sidebar-width: 250px;
+      --header-height: 68px;
+      --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       RESET & BASE
+    ═══════════════════════════════════════════════════════════ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background:
+        radial-gradient(900px 420px at 85% -5%, rgba(109,94,240,0.16), transparent 60%),
+        radial-gradient(700px 380px at -10% 20%, rgba(139,124,246,0.18), transparent 55%),
+        var(--bg-primary);
+      color: var(--text-primary);
+      font-size: 14px;
+      line-height: 1.6;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    button { cursor: pointer; font-family: inherit; }
+    input, select, textarea { font-family: inherit; }
+
+    /* ═══════════════════════════════════════════════════════════
+       SCROLLBAR
+    ═══════════════════════════════════════════════════════════ */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-secondary); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+    /* ═══════════════════════════════════════════════════════════
+       LOADING SCREEN
+    ═══════════════════════════════════════════════════════════ */
+    #loading-screen {
+      position: fixed; inset: 0;
+      background: var(--bg-primary);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 9999;
+      transition: opacity 0.4s, visibility 0.4s;
+    }
+    #loading-screen.hidden { opacity: 0; visibility: hidden; }
+    .loading-logo {
+      display: flex; flex-direction: column; align-items: center; gap: 20px;
+    }
+    .loading-spinner {
+      width: 44px; height: 44px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    .loading-text { color: var(--text-secondary); font-size: 13px; letter-spacing: 0.05em; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ═══════════════════════════════════════════════════════════
+       LOGIN PAGE
+    ═══════════════════════════════════════════════════════════ */
+    #login-page {
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: none;
+      position: relative;
+      overflow: hidden;
+      isolation: isolate;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 20px;
+      background:
+        radial-gradient(1100px 550px at 88% -8%, rgba(139,124,246,0.55), transparent 60%),
+        radial-gradient(900px 500px at -12% 18%, rgba(91,75,196,0.45), transparent 60%),
+        radial-gradient(720px 520px at 50% 115%, rgba(248,113,194,0.30), transparent 60%),
+        linear-gradient(135deg, #1b1440 0%, #2a1f5c 38%, #3d3188 66%, #5b4bc4 100%);
+    }
+    #login-page.active { display: flex; }
+    #login-page::before {
+      content: ''; position: absolute; inset: -30%; z-index: 0; pointer-events: none;
+      background:
+        radial-gradient(closest-side, rgba(139,124,246,0.36), transparent 70%) 18% 22% / 520px 520px no-repeat,
+        radial-gradient(closest-side, rgba(34,211,238,0.26), transparent 70%) 78% 18% / 620px 620px no-repeat,
+        radial-gradient(closest-side, rgba(248,113,194,0.28), transparent 70%) 72% 84% / 560px 560px no-repeat,
+        radial-gradient(closest-side, rgba(109,94,240,0.38), transparent 70%) 22% 80% / 600px 600px no-repeat;
+      filter: blur(10px) saturate(1.15);
+      animation: login-aurora 18s ease-in-out infinite alternate;
+    }
+    @keyframes login-aurora {
+      0% { transform: translate3d(-2%,-1%,0) scale(1); opacity: 0.9; }
+      50% { transform: translate3d(2%,1.5%,0) scale(1.06); opacity: 1; }
+      100% { transform: translate3d(-1%,2%,0) scale(1.02); opacity: 0.92; }
+    }
+    #login-particles { position: absolute; inset: 0; z-index: 0; pointer-events: none; opacity: 0.9; }
+    .login-bg-orb { position: absolute; border-radius: 50%; filter: blur(70px); opacity: 0.6; pointer-events: none; z-index: 0; mix-blend-mode: screen; }
+    .login-bg-orb-1 { width: 480px; height: 480px; top: -140px; right: -90px; background: radial-gradient(circle at 30% 30%, #a99cff, #6d5ef0 62%, #3d2fb3); animation: login-drift-1 11s ease-in-out infinite; }
+    .login-bg-orb-2 { width: 420px; height: 420px; bottom: -140px; left: -110px; background: radial-gradient(circle at 30% 30%, #7dd3fc, #5b4bc4 62%, #241a52); animation: login-drift-2 13s ease-in-out infinite; }
+    @keyframes login-drift-1 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-38px,36px) scale(1.08); } }
+    @keyframes login-drift-2 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(42px,-32px) scale(1.06); } }
+    .login-bg-grid {
+      position: absolute; inset: 0; opacity: 0.20; pointer-events: none; z-index: 0;
+      background-image: linear-gradient(rgba(255,255,255,0.14) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.14) 1px, transparent 1px);
+      background-size: 44px 44px;
+      mask-image: radial-gradient(ellipse 90% 80% at 50% 30%, black 30%, transparent 75%);
+      animation: login-grid-pan 22s linear infinite;
+    }
+    @keyframes login-grid-pan { from { background-position: 0 0, 0 0; } to { background-position: 0 44px, 44px 0; } }
+    .login-float-chip { position: absolute; z-index: 5; pointer-events: none; background: rgba(255,255,255,0.10); border: 1px solid rgba(255,255,255,0.22); border-radius: 16px; color: #fff; padding: 10px 14px; font-size: 12px; font-weight: 600; box-shadow: 0 12px 32px rgba(10,6,35,0.35); animation: login-float-y 7s ease-in-out infinite; backdrop-filter: blur(14px); }
+    .login-float-chip b { display: block; font-size: 15px; }
+    .login-float-chip-1 { top: 6%; left: 3%; }
+    .login-float-chip-2 { bottom: 6%; right: 3%; animation-delay: 1.4s; }
+    .login-float-chip-3 { top: 6%; right: 3%; animation-delay: 2.6s; font-size: 22px; }
+    .login-shell { margin: auto; }
+    #login-page { gap: 0; }
+    @keyframes login-float-y { 0%,100% { transform: translateY(0) rotate(-1deg); } 50% { transform: translateY(-16px) rotate(1.5deg); } }
+    .login-shell { position: relative; z-index: 1; width: min(1060px, 96vw); display: grid; grid-template-columns: 1.02fr 0.98fr; border-radius: 28px; overflow: hidden; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.18); box-shadow: 0 30px 80px rgba(10,6,35,0.55); animation: login-rise 0.7s cubic-bezier(0.22,1,0.36,1) both; }
+    @keyframes login-rise { from { opacity: 0; transform: translateY(22px) scale(0.99); } to { opacity: 1; transform: none; } }
+    .login-glare { position: absolute; inset: 0; z-index: 3; pointer-events: none; opacity: 0; background: radial-gradient(500px circle at var(--glare-x, 50%) var(--glare-y, 50%), rgba(255,255,255,0.16), transparent 55%); transition: opacity 0.3s ease; }
+    .login-shell:hover .login-glare { opacity: 1; }
+    .login-hero { position: relative; padding: 44px 40px; color: #fff; overflow: hidden; background: linear-gradient(160deg, rgba(255,255,255,0.14), rgba(255,255,255,0.04) 45%, rgba(20,12,60,0.35)), linear-gradient(135deg, #241a52, #4c3fc0 70%, #7c6cf4); display: flex; flex-direction: column; justify-content: center; gap: 22px; }
+    .login-hero-pill { display: inline-flex; align-items: center; gap: 8px; align-self: flex-start; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.28); padding: 8px 14px; border-radius: 999px; }
+    .login-hero-pill .dot { width: 8px; height: 8px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 0 4px rgba(74,222,128,0.25); animation: login-pulse 1.8s ease-in-out infinite; }
+    @keyframes login-pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.35); } }
+    .login-hero h2 { font-size: clamp(28px, 3.4vw, 40px); line-height: 1.08; font-weight: 800; letter-spacing: -0.02em; }
+    .login-hero h2 .grad { background: linear-gradient(90deg, #fff, #c7d2fe, #f0abfc, #fff); background-size: 220% auto; -webkit-background-clip: text; background-clip: text; color: transparent; animation: login-shine-text 5s linear infinite; }
+    @keyframes login-shine-text { to { background-position: 220% center; } }
+    .login-hero p { color: rgba(255,255,255,0.82); font-size: 14px; max-width: 38ch; }
+    .login-hero-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .login-hero-stat { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2); border-radius: 16px; padding: 14px; }
+    .login-hero-stat:hover { background: rgba(255,255,255,0.18); }
+    .login-hero-stat b { display: block; font-size: 20px; }
+    .login-hero-stat span { font-size: 11px; color: rgba(255,255,255,0.75); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; }
+
+    /* ═══════════════════════════════════════════════════════════
+       FORM ELEMENTS
+    ═══════════════════════════════════════════════════════════ */
+    .form-group { margin-bottom: 16px; }
+    .form-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 7px;
+    }
+    .form-input, .form-select, .form-textarea {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      padding: 10px 14px;
+      font-size: 14px;
+      transition: border-color var(--transition), box-shadow var(--transition);
+      outline: none;
+    }
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 3px var(--accent-light);
+    }
+    .form-input::placeholder { color: var(--text-muted); }
+    .form-textarea { resize: vertical; min-height: 80px; }
+    .form-select option { background: var(--bg-card); }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+    .form-error {
+      background: var(--danger-bg);
+      border: 1px solid rgba(239, 68, 68, 0.2);
+      border-radius: var(--radius-sm);
+      color: #fca5a5;
+      padding: 10px 14px;
+      font-size: 13px;
+      margin-bottom: 16px;
+      display: none;
+    }
+    .form-error.visible { display: block; }
+
+    /* ═══════════════════════════════════════════════════════════
+       BUTTONS
+    ═══════════════════════════════════════════════════════════ */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      gap: 7px;
+      padding: 9px 18px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 600;
+      border: none;
+      transition: all var(--transition);
+      white-space: nowrap;
+    }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), #7c3aed);
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(79, 110, 247, 0.3);
+    }
+    .btn-primary:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(79, 110, 247, 0.45);
+    }
+    .btn-primary:active:not(:disabled) { transform: translateY(0); }
+
+    .btn-secondary {
+      background: var(--bg-card-hover);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover:not(:disabled) {
+      background: var(--bg-input);
+      border-color: var(--text-muted);
+    }
+
+    .btn-danger {
+      background: var(--danger-bg);
+      color: #fca5a5;
+      border: 1px solid rgba(239, 68, 68, 0.2);
+    }
+    .btn-danger:hover:not(:disabled) {
+      background: rgba(239, 68, 68, 0.2);
+    }
+
+    .btn-success {
+      background: var(--success-bg);
+      color: #86efac;
+      border: 1px solid rgba(34, 197, 94, 0.2);
+    }
+    .btn-success:hover:not(:disabled) { background: rgba(34, 197, 94, 0.2); }
+
+    .btn-sm { padding: 6px 12px; font-size: 12px; }
+    .btn-lg { padding: 13px 24px; font-size: 15px; width: 100%; }
+
+    /* ═══════════════════════════════════════════════════════════
+       APP LAYOUT
+    ═══════════════════════════════════════════════════════════ */
+    #app {
+      display: none;
+      min-height: 100vh;
+    }
+    #app.active { display: flex; }
+
+    /* SIDEBAR */
+    .sidebar {
+      width: var(--sidebar-width);
+      background: var(--bg-secondary);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      z-index: 100;
+      transition: transform var(--transition);
+    }
+
+    .sidebar-brand {
+      padding: 20px 20px 16px;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex; align-items: center; gap: 10px;
+    }
+    .sidebar-brand-icon {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, var(--accent), #7c3aed);
+      border-radius: var(--radius-sm);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+    .sidebar-brand-name { font-size: 13px; font-weight: 700; line-height: 1.2; }
+    .sidebar-brand-sub { font-size: 10px; color: var(--text-muted); }
+
+    .sidebar-nav { flex: 1; padding: 12px 10px; overflow-y: auto; }
+    .nav-section-title {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      padding: 10px 10px 6px;
+    }
+
+    .nav-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 10px;
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all var(--transition);
+      user-select: none;
+      margin-bottom: 2px;
+    }
+    .nav-item:hover { background: var(--bg-card); color: var(--text-primary); }
+    .nav-item.active {
+      background: var(--accent-light);
+      color: var(--text-accent);
+      border: 1px solid rgba(79, 110, 247, 0.2);
+    }
+    .nav-item-icon { font-size: 16px; width: 20px; text-align: center; flex-shrink: 0; }
+    .nav-badge {
+      margin-left: auto;
+      background: var(--accent);
+      color: white;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 10px;
+      min-width: 18px;
+      text-align: center;
+    }
+
+    .sidebar-user {
+      padding: 14px 16px;
+      border-top: 1px solid var(--border-subtle);
+      display: flex; align-items: center; gap: 10px;
+    }
+    .user-avatar {
+      width: 34px; height: 34px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), #7c3aed);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px;
+      font-weight: 700;
+      color: white;
+      flex-shrink: 0;
+    }
+    .user-info { flex: 1; overflow: hidden; }
+    .user-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .user-role { font-size: 11px; color: var(--text-muted); text-transform: capitalize; }
+    .logout-btn {
+      background: none; border: none;
+      color: var(--text-muted); font-size: 15px;
+      padding: 4px; border-radius: var(--radius-sm);
+      transition: color var(--transition), background var(--transition);
+    }
+    .logout-btn:hover { color: var(--danger); background: var(--danger-bg); }
+
+    /* MAIN CONTENT */
+    .main-content {
+      margin-left: var(--sidebar-width);
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* HEADER */
+    .page-header {
+      height: var(--header-height);
+      border-bottom: 1px solid var(--border);
+      padding: 0 32px;
+      display: flex; align-items: center; justify-content: space-between;
+      background: var(--bg-secondary);
+      position: sticky; top: 0;
+      z-index: 50;
+      backdrop-filter: blur(12px);
+    }
+    .page-header-left { display: flex; flex-direction: column; }
+    .page-title { font-size: 18px; font-weight: 700; line-height: 1.2; }
+    .page-subtitle { font-size: 12px; color: var(--text-muted); }
+    .header-actions { display: flex; gap: 10px; align-items: center; }
+
+    /* PAGE CONTENT */
+    .page-content { padding: 28px 32px; flex: 1; }
+
+    /* ═══════════════════════════════════════════════════════════
+       CARDS
+    ═══════════════════════════════════════════════════════════ */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      transition: border-color var(--transition);
+    }
+    .card:hover { border-color: var(--border-focus); }
+    .card-header {
+      padding: 18px 22px;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .card-title { font-size: 15px; font-weight: 600; }
+    .card-body { padding: 22px; }
+
+    /* STAT CARDS */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 18px;
+      margin-bottom: 28px;
+    }
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 22px;
+      display: flex; flex-direction: column; gap: 8px;
+      position: relative;
+      overflow: hidden;
+      transition: all var(--transition);
+    }
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+    }
+    .stat-card.blue::before { background: linear-gradient(90deg, var(--accent), #7c3aed); }
+    .stat-card.green::before { background: linear-gradient(90deg, var(--success), #10b981); }
+    .stat-card.orange::before { background: linear-gradient(90deg, var(--warning), #f97316); }
+    .stat-card.red::before { background: linear-gradient(90deg, var(--danger), #dc2626); }
+    .stat-card:hover { transform: translateY(-2px); border-color: var(--border-focus); box-shadow: var(--shadow); }
+
+    .stat-icon {
+      width: 40px; height: 40px;
+      border-radius: var(--radius);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+      margin-bottom: 4px;
+    }
+    .stat-card.blue .stat-icon { background: var(--accent-light); }
+    .stat-card.green .stat-icon { background: var(--success-bg); }
+    .stat-card.orange .stat-icon { background: var(--warning-bg); }
+    .stat-card.red .stat-icon { background: var(--danger-bg); }
+
+    .stat-value { font-size: 28px; font-weight: 700; line-height: 1; }
+    .stat-label { font-size: 12px; color: var(--text-secondary); font-weight: 500; }
+
+    /* ═══════════════════════════════════════════════════════════
+       WORKSHOP CARDS
+    ═══════════════════════════════════════════════════════════ */
+    .workshops-grid {
+      display: grid;
+      gap: 16px;
+    }
+    .workshop-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+      transition: all var(--transition);
+      cursor: default;
+    }
+    .workshop-card:hover { border-color: var(--border-focus); background: var(--bg-card-hover); transform: translateY(-1px); box-shadow: var(--shadow); }
+    .workshop-card-color {
+      width: 4px;
+      border-radius: 4px;
+      align-self: stretch;
+      flex-shrink: 0;
+    }
+    .wc-scheduled { background: linear-gradient(180deg, var(--accent), #7c3aed); }
+    .wc-cancelled { background: var(--danger); }
+    .wc-completed { background: var(--success); }
+
+    .workshop-card-body { flex: 1; min-width: 0; }
+    .workshop-card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+    .workshop-card-title { font-size: 15px; font-weight: 700; line-height: 1.3; }
+    .workshop-card-code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--text-accent);
+      background: var(--accent-light);
+      padding: 3px 8px;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+    .workshop-card-meta { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 12px; }
+    .workshop-meta-item {
+      display: flex; align-items: center; gap: 5px;
+      font-size: 12px; color: var(--text-secondary);
+    }
+
+    .capacity-bar-wrap { margin-bottom: 12px; }
+    .capacity-label { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-secondary); margin-bottom: 5px; }
+    .capacity-label strong { color: var(--text-primary); }
+    .capacity-bar {
+      height: 5px;
+      background: var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .capacity-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.6s ease;
+    }
+    .capacity-fill.low { background: var(--success); }
+    .capacity-fill.medium { background: var(--warning); }
+    .capacity-fill.high { background: var(--danger); }
+    .capacity-fill.full { background: var(--danger); }
+
+    .workshop-card-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    /* ═══════════════════════════════════════════════════════════
+       BADGES / STATUS
+    ═══════════════════════════════════════════════════════════ */
+    .badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: capitalize;
+    }
+    .badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; }
+    .badge-scheduled { background: var(--accent-light); color: var(--text-accent); }
+    .badge-scheduled::before { background: var(--accent); }
+    .badge-cancelled { background: var(--danger-bg); color: #fca5a5; }
+    .badge-cancelled::before { background: var(--danger); }
+    .badge-completed { background: var(--success-bg); color: #86efac; }
+    .badge-completed::before { background: var(--success); }
+    .badge-active { background: var(--success-bg); color: #86efac; }
+    .badge-active::before { background: var(--success); }
+    .badge-full { background: var(--danger-bg); color: #fca5a5; }
+    .badge-full::before { background: var(--danger); }
+
+    /* ROLE BADGE */
+    .role-badge {
+      display: inline-block;
+      padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;
+      text-transform: capitalize;
+    }
+    .role-admin { background: rgba(168, 85, 247, 0.15); color: #d8b4fe; }
+    .role-manager { background: var(--accent-light); color: var(--text-accent); }
+    .role-staff { background: var(--bg-card-hover); color: var(--text-secondary); }
+
+    /* ═══════════════════════════════════════════════════════════
+       TABLES
+    ═══════════════════════════════════════════════════════════ */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead th {
+      padding: 10px 14px;
+      text-align: left;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    tbody tr { transition: background var(--transition); }
+    tbody tr:hover { background: var(--bg-card-hover); }
+    tbody td { padding: 12px 14px; border-bottom: 1px solid var(--border-subtle); vertical-align: middle; }
+    tbody tr:last-child td { border-bottom: none; }
+
+    .table-mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-accent); }
+
+    /* ═══════════════════════════════════════════════════════════
+       SEARCH & FILTERS
+    ═══════════════════════════════════════════════════════════ */
+    .filters-bar {
+      display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+      margin-bottom: 20px;
+    }
+    .search-input-wrap { position: relative; flex: 1; min-width: 200px; max-width: 320px; }
+    .search-icon {
+      position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
+      color: var(--text-muted); font-size: 14px; pointer-events: none;
+    }
+    .search-input {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      padding: 9px 12px 9px 34px;
+      font-size: 13px;
+      transition: border-color var(--transition);
+      outline: none;
+    }
+    .search-input:focus { border-color: var(--border-focus); }
+    .search-input::placeholder { color: var(--text-muted); }
+
+    .filter-select {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      padding: 9px 12px;
+      font-size: 13px;
+      outline: none;
+      cursor: pointer;
+      transition: border-color var(--transition);
+    }
+    .filter-select:focus { border-color: var(--border-focus); }
+
+    .filter-checkbox-wrap {
+      display: flex; align-items: center; gap: 6px;
+      color: var(--text-secondary); font-size: 13px; cursor: pointer;
+    }
+    input[type=checkbox] {
+      width: 16px; height: 16px; cursor: pointer;
+      accent-color: var(--accent);
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       MODAL
+    ═══════════════════════════════════════════════════════════ */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      animation: fade-in 0.15s ease;
+    }
+    .modal-overlay.open { display: flex; }
+    @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+    .modal {
+      background: var(--bg-modal);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      width: 100%; max-width: 520px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: var(--shadow-lg);
+      animation: modal-pop 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .modal-lg { max-width: 700px; }
+    @keyframes modal-pop {
+      from { opacity: 0; transform: scale(0.95) translateY(10px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    .modal-header {
+      padding: 22px 24px 18px;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .modal-title { font-size: 16px; font-weight: 700; }
+    .modal-close {
+      background: none; border: none;
+      color: var(--text-muted); font-size: 20px; line-height: 1;
+      padding: 4px 8px; border-radius: var(--radius-sm);
+      transition: all var(--transition);
+    }
+    .modal-close:hover { color: var(--text-primary); background: var(--bg-card-hover); }
+    .modal-body { padding: 22px 24px; }
+    .modal-footer {
+      padding: 16px 24px 22px;
+      display: flex; justify-content: flex-end; gap: 10px;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       TOAST NOTIFICATIONS
+    ═══════════════════════════════════════════════════════════ */
+    #toast-container {
+      position: fixed;
+      bottom: 24px; right: 24px;
+      z-index: 9999;
+      display: flex; flex-direction: column; gap: 10px;
+      pointer-events: none;
+    }
+    .toast {
+      display: flex; align-items: center; gap: 12px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 13px 18px;
+      box-shadow: var(--shadow-lg);
+      pointer-events: all;
+      min-width: 280px; max-width: 380px;
+      animation: toast-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      position: relative;
+      overflow: hidden;
+    }
+    @keyframes toast-in {
+      from { opacity: 0; transform: translateY(20px) scale(0.9); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .toast.removing { animation: toast-out 0.25s ease forwards; }
+    @keyframes toast-out { to { opacity: 0; transform: translateY(10px); } }
+
+    .toast::before {
+      content: '';
+      position: absolute; left: 0; top: 0; bottom: 0;
+      width: 3px;
+    }
+    .toast-success::before { background: var(--success); }
+    .toast-error::before { background: var(--danger); }
+    .toast-warning::before { background: var(--warning); }
+    .toast-info::before { background: var(--accent); }
+
+    .toast-icon { font-size: 18px; flex-shrink: 0; }
+    .toast-message { flex: 1; font-size: 13px; font-weight: 500; line-height: 1.4; }
+    .toast-close {
+      background: none; border: none; color: var(--text-muted);
+      font-size: 16px; cursor: pointer; padding: 0; flex-shrink: 0;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       EMPTY STATE
+    ═══════════════════════════════════════════════════════════ */
+    .empty-state {
+      display: flex; flex-direction: column; align-items: center;
+      padding: 60px 20px;
+      color: var(--text-muted);
+      text-align: center;
+      gap: 12px;
+    }
+    .empty-state-icon { font-size: 48px; opacity: 0.4; }
+    .empty-state-title { font-size: 15px; font-weight: 600; color: var(--text-secondary); }
+    .empty-state-text { font-size: 13px; max-width: 300px; }
+
+    /* ═══════════════════════════════════════════════════════════
+       SKELETON LOADER
+    ═══════════════════════════════════════════════════════════ */
+    .skeleton {
+      background: linear-gradient(90deg, var(--bg-card) 25%, var(--bg-card-hover) 50%, var(--bg-card) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 6px;
+    }
+    @keyframes shimmer { to { background-position: -200% 0; } }
+
+    /* ═══════════════════════════════════════════════════════════
+       HISTORY TIMELINE
+    ═══════════════════════════════════════════════════════════ */
+    .timeline { position: relative; }
+    .timeline-item {
+      display: flex; gap: 14px;
+      padding-bottom: 20px;
+      position: relative;
+    }
+    .timeline-item::before {
+      content: '';
+      position: absolute;
+      left: 15px; top: 32px; bottom: 0;
+      width: 2px;
+      background: var(--border-subtle);
+    }
+    .timeline-item:last-child::before { display: none; }
+    .timeline-dot {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+      z-index: 1;
+    }
+    .timeline-register .timeline-dot { background: var(--success-bg); color: var(--success); border: 1px solid rgba(34,197,94,0.3); }
+    .timeline-cancel .timeline-dot { background: var(--danger-bg); color: var(--danger); border: 1px solid rgba(239,68,68,0.3); }
+    .timeline-body { flex: 1; }
+    .timeline-action { font-size: 13px; font-weight: 600; }
+    .timeline-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+    /* ═══════════════════════════════════════════════════════════
+       RESPONSIVE
+    ═══════════════════════════════════════════════════════════ */
+    @media (max-width: 768px) {
+      .sidebar { transform: translateX(-100%); }
+      .sidebar.open { transform: translateX(0); }
+      .main-content { margin-left: 0; }
+      .page-content { padding: 16px; }
+      .form-row { grid-template-columns: 1fr; }
+      .filters-bar { flex-direction: column; align-items: stretch; }
+      .search-input-wrap { max-width: 100%; }
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       MISC UTILITIES
+    ═══════════════════════════════════════════════════════════ */
+    .hidden { display: none !important; }
+    .text-muted { color: var(--text-muted); }
+    .text-success { color: var(--success); }
+    .text-danger { color: var(--danger); }
+    .text-warning { color: var(--warning); }
+    .text-accent { color: var(--text-accent); }
+    .font-mono { font-family: 'JetBrains Mono', monospace; }
+    .mt-1 { margin-top: 6px; }
+    .mt-2 { margin-top: 12px; }
+    .mt-3 { margin-top: 20px; }
+    .mb-1 { margin-bottom: 6px; }
+    .mb-2 { margin-bottom: 12px; }
+    .mb-3 { margin-bottom: 20px; }
+    .flex { display: flex; }
+    .items-center { align-items: center; }
+    .gap-2 { gap: 8px; }
+    .justify-between { justify-content: space-between; }
+    .w-full { width: 100%; }
+
+    /* Divider */
+    .divider { height: 1px; background: var(--border-subtle); margin: 16px 0; }
+
+    /* Detail row */
+    .detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 20px; }
+    .detail-item {}
+    .detail-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+    .detail-value { font-size: 14px; color: var(--text-primary); }
+
+    /* Role-restricted element visibility */
+    [data-role-required]:not(.role-visible) { display: none !important; }
+
+    /* ═══════════════════════════════════════════════════════════
+       PAYNEXT OVERRIDES — light purple hero theme (reference image)
+       Same class names / JS hooks; visuals only.
+    ═══════════════════════════════════════════════════════════ */
+    /* glass login keeps its own background (see LOGIN section above) */
+    .form-error { color: #b91c1c; border-color: rgba(220,38,38,0.25); }
+    .sidebar {
+      background: linear-gradient(180deg, #241a52 0%, #3d3188 60%, #5b4bc4 100%);
+      border-right: none; color: #fff;
+    }
+    .sidebar-brand-name, .sidebar-user-name { color: #fff; }
+    .sidebar-brand-sub, .sidebar-user-role, .nav-section-label { color: rgba(255,255,255,0.65); }
+    .nav-item { color: rgba(255,255,255,0.82); }
+    .nav-item:hover { background: rgba(255,255,255,0.12); color: #fff; }
+    .nav-item.active { background: #fff; color: #3b2f8f; }
+    .user-avatar { background: rgba(255,255,255,0.2); color: #fff; }
+    .logout-btn { border-color: rgba(255,255,255,0.25); color: rgba(255,255,255,0.85); }
+    .logout-btn:hover { background: rgba(255,255,255,0.14); color: #fff; }
+    .topbar { background: rgba(255,255,255,0.85); backdrop-filter: blur(12px); }
+    .page-header {
+      background: linear-gradient(135deg, var(--hero-1), var(--hero-2) 60%, var(--hero-3));
+      color: #fff;
+    }
+    .page-header .page-title { color: #fff; }
+    .page-header .page-subtitle { color: rgba(255,255,255,0.78); }
+    .page-header .btn-secondary { background: rgba(255,255,255,0.16); border-color: rgba(255,255,255,0.3); color: #fff; }
+    .page-header .btn-primary { background: #fff; color: #3b2f8f; }
+    .btn-primary { background: linear-gradient(135deg, var(--accent), #8b7cf6); box-shadow: var(--shadow-accent); }
+    .login-brand-icon, .detail-icon { background: linear-gradient(135deg, var(--accent), #9d8df7); }
+
+    .login-float-chip { position: absolute; z-index: 5; pointer-events: none; background: rgba(255,255,255,0.10); border: 1px solid rgba(255,255,255,0.22); border-radius: 16px; color: #fff; padding: 10px 14px; font-size: 12px; font-weight: 600; box-shadow: 0 12px 32px rgba(10,6,35,0.35); animation: login-float-y 7s ease-in-out infinite; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+    .login-float-chip b { display: block; font-size: 15px; }
+    .login-float-chip-1 { top: 6%; left: 3%; }
+    .login-float-chip-2 { bottom: 6%; right: 3%; animation-delay: 1.4s; }
+    .login-float-chip-3 { top: 6%; right: 3%; animation-delay: 2.6s; font-size: 22px; }
+    .login-shell { margin: auto; }
+    #login-page { gap: 0; }
+    @keyframes login-float-y { 0%,100% { transform: translateY(0) rotate(-1deg); } 50% { transform: translateY(-16px) rotate(1.5deg); } }
+    .login-shell { position: relative; z-index: 1; width: min(1060px, 96vw); display: grid; grid-template-columns: 1.02fr 0.98fr; border-radius: 28px; overflow: hidden; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.18); box-shadow: 0 30px 80px rgba(10,6,35,0.55); animation: login-rise 0.7s cubic-bezier(0.22,1,0.36,1) both; }
+    @keyframes login-rise { from { opacity: 0; transform: translateY(22px) scale(0.99); } to { opacity: 1; transform: none; } }
+    .login-glare { position: absolute; inset: 0; z-index: 3; pointer-events: none; opacity: 0; background: radial-gradient(500px circle at var(--glare-x, 50%) var(--glare-y, 50%), rgba(255,255,255,0.16), transparent 55%); transition: opacity 0.3s ease; }
+    .login-shell:hover .login-glare { opacity: 1; }
+    .login-hero { position: relative; padding: 44px 40px; color: #fff; overflow: hidden; background: linear-gradient(160deg, rgba(255,255,255,0.14), rgba(255,255,255,0.04) 45%, rgba(20,12,60,0.35)), linear-gradient(135deg, #241a52, #4c3fc0 70%, #7c6cf4); display: flex; flex-direction: column; justify-content: center; gap: 22px; }
+    .login-hero-pill { display: inline-flex; align-items: center; gap: 8px; align-self: flex-start; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.28); padding: 8px 14px; border-radius: 999px; }
+    .login-hero-pill .dot { width: 8px; height: 8px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 0 4px rgba(74,222,128,0.25); animation: login-pulse 1.8s ease-in-out infinite; }
+    @keyframes login-pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.35); } }
+    .login-hero h2 { font-size: clamp(28px, 3.4vw, 40px); line-height: 1.08; font-weight: 800; letter-spacing: -0.02em; margin: 0; }
+    .login-hero h2 .grad { background: linear-gradient(90deg, #fff, #c7d2fe, #f0abfc, #fff); background-size: 220% auto; -webkit-background-clip: text; background-clip: text; color: transparent; animation: login-shine-text 5s linear infinite; }
+    @keyframes login-shine-text { to { background-position: 220% center; } }
+    .login-hero p { color: rgba(255,255,255,0.82); font-size: 14px; max-width: 38ch; margin: 0; }
+    .login-hero-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .login-hero-stat { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2); border-radius: 16px; padding: 14px; transition: transform 0.25s ease, background 0.25s ease; }
+    .login-hero-stat:hover { transform: translateY(-4px); background: rgba(255,255,255,0.18); }
+    .login-hero-stat b { display: block; font-size: 20px; }
+    .login-hero-stat span { font-size: 11px; color: rgba(255,255,255,0.75); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; }
+    .login-ticker { display: flex; gap: 10px; overflow: hidden; -webkit-mask-image: linear-gradient(90deg, transparent, black 8%, black 92%, transparent); mask-image: linear-gradient(90deg, transparent, black 8%, black 92%, transparent); }
+    .login-ticker-track { display: flex; gap: 10px; animation: login-marquee 22s linear infinite; will-change: transform; }
+    .login-ticker:hover .login-ticker-track { animation-play-state: paused; }
+    @keyframes login-marquee { to { transform: translateX(-50%); } }
+    .login-ticker-item { white-space: nowrap; font-size: 12px; font-weight: 600; background: rgba(10,6,35,0.35); border: 1px solid rgba(255,255,255,0.22); padding: 8px 14px; border-radius: 999px; }
+    .login-brand-row { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
+    .login-avatars { display: flex; }
+    .login-avatars span { width: 32px; height: 32px; border-radius: 50%; margin-left: -10px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; color: #fff; border: 2px solid rgba(255,255,255,0.7); }
+    .login-avatars span:first-child { margin-left: 0; }
+    .login-brand-row small { color: rgba(255,255,255,0.75); font-size: 12px; }
+
+    .login-card { background: rgba(255,255,255,0.88); backdrop-filter: blur(24px) saturate(1.4); -webkit-backdrop-filter: blur(24px) saturate(1.4); border: 1px solid rgba(255,255,255,0.65); border-radius: 0; padding: 42px 38px; width: 100%; position: relative; z-index: 2; box-shadow: none; overflow: hidden; }
+    .login-card::before { content: ''; position: absolute; top: 0; left: 10%; right: 10%; height: 2px; background: linear-gradient(90deg, transparent, #8b7cf6, #f0abfc, transparent); opacity: 0.9; }
+    .login-brand { display: flex; align-items: center; gap: 12px; margin-bottom: 26px; }
+    .login-brand-icon { width: 46px; height: 46px; background: linear-gradient(135deg, var(--accent), #9d8df7); border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 22px; box-shadow: var(--shadow-accent); animation: login-icon-bob 4s ease-in-out infinite; }
+    @keyframes login-icon-bob { 0%,100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-4px) rotate(2deg); } }
+    .login-brand-text { line-height: 1.2; }
+    .login-brand-name { font-size: 16px; font-weight: 800; color: var(--text-primary); letter-spacing: -0.01em; }
+    .login-brand-sub { font-size: 12px; color: var(--text-muted); font-weight: 600; }
+    .login-title { font-size: 26px; font-weight: 800; margin-bottom: 6px; letter-spacing: -0.02em; }
+    .login-title .wave { display: inline-block; animation: login-wave 2.2s ease-in-out infinite; transform-origin: 70% 70%; }
+    @keyframes login-wave { 0%,100% { transform: rotate(0); } 20% { transform: rotate(16deg); } 40% { transform: rotate(-8deg); } 60% { transform: rotate(12deg); } 80% { transform: rotate(-4deg); } }
+    .login-subtitle { color: var(--text-secondary); font-size: 13px; margin-bottom: 24px; }
+    .login-card .form-error { background: rgba(220,38,38,0.08); border: 1px solid rgba(220,38,38,0.25); color: #b91c1c; border-radius: 12px; font-size: 13px; font-weight: 600; padding: 0 14px; max-height: 0; overflow: hidden; opacity: 0; margin-bottom: 0; transition: all 0.3s ease; }
+    .login-card .form-error.visible { padding: 11px 14px; max-height: 80px; opacity: 1; margin-bottom: 16px; animation: login-shake 0.4s ease; }
+    @keyframes login-shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 50% { transform: translateX(6px); } 75% { transform: translateX(-3px); } }
+    .login-field { position: relative; }
+    .login-field .field-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 16px; opacity: 0.65; pointer-events: none; }
+    .login-card .form-input { background: rgba(244,242,252,0.9); border: 1.5px solid var(--border); border-radius: 14px; padding: 12px 14px 12px 42px; transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, background 0.2s ease; }
+    .login-card .form-input:focus { border-color: var(--accent); background: #fff; box-shadow: 0 0 0 4px var(--accent-light), 0 8px 24px rgba(109,94,240,0.18); transform: translateY(-1px); }
+    .pw-toggle { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); border: 1px solid transparent; background: transparent; border-radius: 10px; font-size: 16px; padding: 6px 8px; line-height: 1; opacity: 0.65; transition: all 0.2s ease; cursor: pointer; }
+    .pw-toggle:hover { opacity: 1; background: rgba(109,94,240,0.1); border-color: rgba(109,94,240,0.25); }
+    .caps-hint { display: none; font-size: 11.5px; font-weight: 700; color: #b45309; background: rgba(217,119,6,0.12); border: 1px solid rgba(217,119,6,0.3); padding: 6px 10px; border-radius: 999px; margin-top: 8px; }
+    .caps-hint.visible { display: inline-block; }
+    .login-row { display: flex; align-items: center; justify-content: space-between; margin: 6px 0 18px; font-size: 12.5px; }
+    .login-remember { display: flex; align-items: center; gap: 8px; color: var(--text-secondary); font-weight: 600; cursor: pointer; }
+    .login-remember input { accent-color: var(--accent); width: 16px; height: 16px; cursor: pointer; }
+    .login-secure { color: var(--text-muted); font-weight: 600; }
+    #login-btn { position: relative; overflow: hidden; isolation: isolate; border-radius: 14px; font-size: 15px; transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease; }
+    #login-btn::after { content: ''; position: absolute; top: 0; left: -80%; width: 55%; height: 100%; background: linear-gradient(100deg, transparent, rgba(255,255,255,0.5), transparent); transform: skewX(-20deg); transition: left 0.6s ease; z-index: 1; }
+    #login-btn:hover:not(:disabled)::after { left: 130%; }
+    #login-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(109,94,240,0.45); filter: brightness(1.03); }
+    #login-btn:active:not(:disabled) { transform: translateY(0) scale(0.99); }
+    #login-btn .btn-spinner { display: none; width: 18px; height: 18px; border-radius: 50%; border: 2.5px solid rgba(255,255,255,0.4); border-top-color: #fff; animation: login-spin 0.7s linear infinite; vertical-align: -3px; margin-right: 8px; }
+    @keyframes login-spin { to { transform: rotate(360deg); } }
+    #login-btn.is-loading .btn-spinner { display: inline-block; }
+    #login-btn.is-loading { pointer-events: none; filter: brightness(0.96); }
+    .login-divider { display: flex; align-items: center; gap: 12px; margin: 22px 0 14px; color: var(--text-muted); font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+    .login-divider::before, .login-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+    .login-quick { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .login-chip { border: 1.5px solid var(--border); background: rgba(255,255,255,0.7); border-radius: 12px; padding: 10px 8px; font-size: 12px; font-weight: 800; color: var(--text-primary); transition: all 0.2s ease; cursor: pointer; }
+    .login-chip small { display: block; font-weight: 600; color: var(--text-muted); font-size: 10.5px; }
+    .login-chip:hover { border-color: var(--accent); background: var(--accent-light); transform: translateY(-2px); box-shadow: 0 8px 20px rgba(109,94,240,0.2); }
+    .login-foot { margin-top: 20px; text-align: center; font-size: 12px; color: var(--text-muted); }
+    .login-foot code { background: rgba(109,94,240,0.1); border: 1px solid rgba(109,94,240,0.2); padding: 1px 7px; border-radius: 7px; font-size: 11px; color: var(--accent-hover); }
+    .reveal { opacity: 0; animation: login-reveal 0.6s cubic-bezier(0.22,1,0.36,1) forwards; animation-delay: var(--d, 0s); }
+    @keyframes login-reveal { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+    @media (max-width: 920px) { .login-shell { grid-template-columns: 1fr; max-width: 480px; } .login-hero { padding: 32px 28px; gap: 16px; } .login-card { padding: 32px 26px; } .login-float-chip-1, .login-float-chip-2 { display: none; } .login-float-chip-3 { top: 4%; right: 5%; } }
+    @media (prefers-reduced-motion: reduce) { #login-page::before, .login-bg-orb, .login-bg-grid, .login-float-chip, .login-ticker-track, .login-hero h2 .grad, .login-brand-icon, .login-title .wave { animation: none !important; } .reveal, .login-shell { animation-duration: 0.01ms !important; } }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════
+     LOADING SCREEN
+═══════════════════════════════════════════════════════════ -->
+<div id="loading-screen">
+  <div class="loading-logo">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">Loading Workshop Manager…</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     LOGIN PAGE
+═══════════════════════════════════════════════════════════ -->
+<div id="login-page">
+  <canvas id="login-particles"></canvas>
+  <div class="login-bg-orb login-bg-orb-1"></div>
+  <div class="login-bg-orb login-bg-orb-2"></div>
+  <div class="login-bg-grid"></div>
+  <div class="login-float-chip login-float-chip-1">✅<b>No overbooking</b>capacity locked</div>
+  <div class="login-float-chip login-float-chip-2">📜<b>Full history</b>who did what, when</div>
+  <div class="login-float-chip login-float-chip-3">🎓</div>
+
+  <div class="login-shell" id="login-shell">
+    <div class="login-glare" id="login-glare"></div>
+
+    <div class="login-hero">
+      <div class="login-hero-pill reveal" style="--d:0.05s"><span class="dot"></span> Staff portal · Live</div>
+      <h2 class="reveal" style="--d:0.12s">Every seat, <span class="grad">every session</span>, under control.</h2>
+      <p class="reveal" style="--d:0.2s">Register attendees in seconds, never double-book the last seat, and keep a full audit trail of who did what.</p>
+      <div class="login-hero-stats">
+        <div class="login-hero-stat reveal" style="--d:0.26s"><b>3</b><span>Locations</span></div>
+        <div class="login-hero-stat reveal" style="--d:0.32s"><b>0</b><span>Overbooked</span></div>
+        <div class="login-hero-stat reveal" style="--d:0.38s"><b>100%</b><span>History</span></div>
+      </div>
+      <div class="login-ticker reveal" style="--d:0.44s">
+        <div class="login-ticker-track">
+          <span class="login-ticker-item">🎨 Pottery · Sat 10:00</span>
+          <span class="login-ticker-item">💻 Coding · Sat 14:00</span>
+          <span class="login-ticker-item">🧘 Fitness · Sun 09:00</span>
+          <span class="login-ticker-item">🎨 Pottery · Sat 10:00</span>
+          <span class="login-ticker-item">💻 Coding · Sat 14:00</span>
+          <span class="login-ticker-item">🧘 Fitness · Sun 09:00</span>
+        </div>
+      </div>
+      <div class="login-brand-row reveal" style="--d:0.5s">
+        <div class="login-avatars">
+          <span style="background:#6d5ef0">PM</span>
+          <span style="background:#8b7cf6">FD</span>
+          <span style="background:#2a1f5c">AD</span>
+          <span style="background:#f472b6">+</span>
+        </div>
+        <small>Trusted by front-desk, managers &amp; admins</small>
+      </div>
+    </div>
+
+    <div class="login-card">
+      <div class="login-brand reveal" style="--d:0.08s">
+        <div class="login-brand-icon">🎓</div>
+        <div class="login-brand-text">
+          <div class="login-brand-name">WorkshopHub</div>
+          <div class="login-brand-sub">Staff Portal · Paynext theme</div>
+        </div>
+      </div>
+
+      <h1 class="login-title reveal" style="--d:0.14s"><span class="wave">👋</span> Welcome back</h1>
+      <p class="login-subtitle reveal" style="--d:0.2s">Sign in to manage workshops and registrations</p>
+
+      <div class="form-error" id="login-error"></div>
+
+      <form id="login-form" novalidate>
+        <div class="form-group reveal" style="--d:0.26s">
+          <label class="form-label" for="login-email">Email Address</label>
+          <div class="login-field">
+            <span class="field-icon">📧</span>
+            <input class="form-input" type="email" id="login-email" name="email"
+                   placeholder="you@example.com" autocomplete="email" required />
+          </div>
+        </div>
+        <div class="form-group reveal" style="--d:0.32s">
+          <label class="form-label" for="login-password">Password</label>
+          <div class="login-field">
+            <span class="field-icon">🔒</span>
+            <input class="form-input" type="password" id="login-password" name="password"
+                   placeholder="Enter your password" autocomplete="current-password" required style="padding-right:46px;" />
+            <button type="button" class="pw-toggle" id="pw-toggle" title="Show password" aria-label="Show password">👁️</button>
+          </div>
+          <span class="caps-hint" id="caps-hint">⚠️ Caps Lock is on</span>
+        </div>
+        <div class="login-row reveal" style="--d:0.38s">
+          <label class="login-remember"><input type="checkbox" id="login-remember" checked /> Remember me</label>
+          <span class="login-secure">🔐 Secured session</span>
+        </div>
+        <div class="reveal" style="--d:0.44s">
+          <button class="btn btn-primary btn-lg w-full" type="submit" id="login-btn">
+            <span class="btn-spinner"></span>
+            <span class="btn-label">Sign In →</span>
+          </button>
+        </div>
+      </form>
+
+      <div class="login-divider reveal" style="--d:0.5s">Quick demo login</div>
+      <div class="login-quick reveal" style="--d:0.56s">
+        <button type="button" class="login-chip" data-email="admin@workshop.local" data-pass="Admin@1234">Admin<small>users only</small></button>
+        <button type="button" class="login-chip" data-email="manager@workshop.local" data-pass="Manager@1234">Manager<small>full desk</small></button>
+        <button type="button" class="login-chip" data-email="staff@workshop.local" data-pass="Staff@1234">Staff<small>register</small></button>
+      </div>
+
+      <div class="login-foot reveal" style="--d:0.62s">
+        Seeded admin <code>admin@workshop.local / Admin@1234</code>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     MAIN APP
+═══════════════════════════════════════════════════════════ -->
+<div id="app">
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="sidebar-brand-icon">🎓</div>
+      <div>
+        <div class="sidebar-brand-name">WorkshopHub</div>
+        <div class="sidebar-brand-sub">Staff Portal</div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-title">Menu</div>
+      <div class="nav-item active" data-page="dashboard" id="nav-dashboard">
+        <span class="nav-item-icon">📊</span> Dashboard
+      </div>
+      <div class="nav-item" data-page="workshops" id="nav-workshops">
+        <span class="nav-item-icon">🗂️</span> Workshops
+      </div>
+      <div class="nav-item" data-page="registrations" id="nav-registrations">
+        <span class="nav-item-icon">📋</span> Registrations
+      </div>
+      <div class="nav-item" data-page="history" id="nav-history">
+        <span class="nav-item-icon">📜</span> History
+      </div>
+
+      <div class="nav-section-title mt-3" data-role-required="admin" id="admin-nav-section">Admin</div>
+      <div class="nav-item" data-page="users" id="nav-users" data-role-required="admin">
+        <span class="nav-item-icon">👥</span> Users
+      </div>
+    </nav>
+
+    <div class="sidebar-user">
+      <div class="user-avatar" id="user-avatar-initials">--</div>
+      <div class="user-info">
+        <div class="user-name" id="sidebar-user-name">Loading…</div>
+        <div class="user-role" id="sidebar-user-role">—</div>
+      </div>
+      <button class="logout-btn" id="logout-btn" title="Sign out">⏏</button>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="main-content">
+
+    <!-- ════════════════════ DASHBOARD PAGE ════════════════════ -->
+    <div id="page-dashboard" class="page-view">
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1 class="page-title">Dashboard</h1>
+          <div class="page-subtitle">Overview of workshop activity</div>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn-primary" id="dash-register-btn" data-role-required="manager staff">
+            ➕ Register Attendee
+          </button>
+        </div>
+      </div>
+      <div class="page-content">
+        <div class="stats-grid" id="stats-grid">
+          <div class="stat-card blue skeleton" style="min-height:110px;"></div>
+          <div class="stat-card green skeleton" style="min-height:110px;"></div>
+          <div class="stat-card orange skeleton" style="min-height:110px;"></div>
+          <div class="stat-card red skeleton" style="min-height:110px;"></div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">⏳ Upcoming Workshops</span>
+            <button class="btn btn-secondary btn-sm" onclick="navigate('workshops')">View All →</button>
+          </div>
+          <div class="card-body" id="upcoming-workshops-list">
+            <div class="skeleton" style="height:60px;border-radius:8px;margin-bottom:10px;"></div>
+            <div class="skeleton" style="height:60px;border-radius:8px;margin-bottom:10px;"></div>
+            <div class="skeleton" style="height:60px;border-radius:8px;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════ WORKSHOPS PAGE ════════════════════ -->
+    <div id="page-workshops" class="page-view hidden">
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1 class="page-title">Workshops</h1>
+          <div class="page-subtitle">Browse and manage all workshops</div>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn-primary" id="create-workshop-btn" data-role-required="manager">
+            ➕ New Workshop
+          </button>
+        </div>
+      </div>
+      <div class="page-content">
+        <div class="filters-bar">
+          <div class="search-input-wrap">
+            <span class="search-icon">🔍</span>
+            <input class="search-input" type="text" id="workshop-search"
+                   placeholder="Search by title or code…" />
+          </div>
+          <select class="filter-select" id="workshop-status-filter">
+            <option value="">All Statuses</option>
+            <option value="scheduled">Scheduled</option>
+            <option value="cancelled">Cancelled</option>
+            <option value="completed">Completed</option>
+          </select>
+          <input class="filter-select" type="date" id="workshop-from" title="From date" />
+          <input class="filter-select" type="date" id="workshop-to" title="To date" />
+          <label class="filter-checkbox-wrap">
+            <input type="checkbox" id="available-only" />
+            Available seats only
+          </label>
+          <button class="btn btn-secondary btn-sm" id="clear-filters-btn">✕ Clear</button>
+        </div>
+        <div id="workshops-list" class="workshops-grid">
+          <div class="skeleton" style="height:160px;border-radius:12px;"></div>
+          <div class="skeleton" style="height:160px;border-radius:12px;"></div>
+          <div class="skeleton" style="height:160px;border-radius:12px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════ REGISTRATIONS PAGE ════════════════════ -->
+    <div id="page-registrations" class="page-view hidden">
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1 class="page-title">Registrations</h1>
+          <div class="page-subtitle">View and manage workshop registrations</div>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn-primary" id="reg-register-btn">
+            ➕ Register Attendee
+          </button>
+        </div>
+      </div>
+      <div class="page-content">
+        <div class="filters-bar">
+          <div class="search-input-wrap">
+            <span class="search-icon">🔍</span>
+            <input class="search-input" type="text" id="reg-search"
+                   placeholder="Search attendee or workshop…" />
+          </div>
+          <select class="filter-select" id="reg-status-filter">
+            <option value="">All</option>
+            <option value="active">Active</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
+        <div class="card">
+          <div class="card-body" style="padding:0;">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Attendee</th>
+                    <th>Workshop</th>
+                    <th>Status</th>
+                    <th>Registered</th>
+                    <th>Staff</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="registrations-table-body">
+                  <tr><td colspan="6"><div class="skeleton" style="height:40px;margin:10px 0;"></div></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════ HISTORY PAGE ════════════════════ -->
+    <div id="page-history" class="page-view hidden">
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1 class="page-title">Registration History</h1>
+          <div class="page-subtitle">Full audit trail of all registration activity</div>
+        </div>
+      </div>
+      <div class="page-content">
+        <div class="filters-bar">
+          <select class="filter-select" id="hist-status-filter">
+            <option value="">All Records</option>
+            <option value="active">Active Only</option>
+            <option value="cancelled">Cancelled Only</option>
+          </select>
+        </div>
+        <div class="card">
+          <div class="card-body" style="padding:0;">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Attendee</th>
+                    <th>Email</th>
+                    <th>Workshop</th>
+                    <th>Status</th>
+                    <th>Registered At</th>
+                    <th>Registered By</th>
+                    <th>Cancelled At</th>
+                    <th>Cancelled By</th>
+                    <th>Detail</th>
+                  </tr>
+                </thead>
+                <tbody id="history-table-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════ USERS PAGE ════════════════════ -->
+    <div id="page-users" class="page-view hidden" data-role-required="admin">
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1 class="page-title">User Management</h1>
+          <div class="page-subtitle">Admin-only: create and manage staff accounts</div>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn-primary" id="create-user-btn">➕ New User</button>
+        </div>
+      </div>
+      <div class="page-content">
+        <div class="card">
+          <div class="card-body" style="padding:0;">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="users-table-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     MODALS
+═══════════════════════════════════════════════════════════ -->
+
+<!-- Register Attendee Modal -->
+<div class="modal-overlay" id="modal-register">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">📋 Register Attendee</div>
+      <button class="modal-close" onclick="closeModal('modal-register')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-error" id="reg-modal-error"></div>
+      <div class="form-group">
+        <label class="form-label" for="reg-workshop-select">Workshop</label>
+        <select class="form-select" id="reg-workshop-select">
+          <option value="">— Select a workshop —</option>
+        </select>
+      </div>
+      <div id="reg-workshop-info" class="hidden" style="margin-bottom:14px;">
+        <div style="background:var(--bg-input); border:1px solid var(--border); border-radius:var(--radius-sm); padding:12px 14px; font-size:13px;">
+          <div id="reg-workshop-seats"></div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="reg-attendee-name">Attendee Name</label>
+          <input class="form-input" type="text" id="reg-attendee-name" placeholder="Full name" />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="reg-attendee-email">Attendee Email</label>
+          <input class="form-input" type="email" id="reg-attendee-email" placeholder="attendee@example.com" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="reg-notes">Notes (optional)</label>
+        <textarea class="form-textarea" id="reg-notes" placeholder="Any additional notes…"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-register')">Cancel</button>
+      <button class="btn btn-primary" id="reg-submit-btn">Register</button>
+    </div>
+  </div>
+</div>
+
+<!-- Workshop Form Modal -->
+<div class="modal-overlay" id="modal-workshop-form">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <div class="modal-title" id="workshop-form-title">🗂️ New Workshop</div>
+      <button class="modal-close" onclick="closeModal('modal-workshop-form')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-error" id="ws-form-error"></div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="ws-code">Workshop Code</label>
+          <input class="form-input" type="text" id="ws-code" placeholder="e.g. WS-010"
+                 style="text-transform:uppercase;" />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="ws-status">Status</label>
+          <select class="form-select" id="ws-status">
+            <option value="scheduled">Scheduled</option>
+            <option value="completed">Completed</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="ws-title">Title</label>
+        <input class="form-input" type="text" id="ws-title" placeholder="Workshop title" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="ws-description">Description</label>
+        <textarea class="form-textarea" id="ws-description" placeholder="Brief description…"></textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="ws-instructor">Instructor</label>
+          <input class="form-input" type="text" id="ws-instructor" placeholder="Instructor name" />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="ws-location">Location</label>
+          <input class="form-input" type="text" id="ws-location" placeholder="Room / Building" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="ws-starts-at">Start Date & Time</label>
+          <input class="form-input" type="datetime-local" id="ws-starts-at" />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="ws-ends-at">End Date & Time</label>
+          <input class="form-input" type="datetime-local" id="ws-ends-at" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="ws-capacity">Capacity (seats)</label>
+        <input class="form-input" type="number" id="ws-capacity" min="1" placeholder="e.g. 20" />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-workshop-form')">Cancel</button>
+      <button class="btn btn-primary" id="ws-form-submit-btn">Create Workshop</button>
+    </div>
+  </div>
+</div>
+
+<!-- Create User Modal -->
+<div class="modal-overlay" id="modal-user-form">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="user-form-title">👤 New User</div>
+      <button class="modal-close" onclick="closeModal('modal-user-form')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-error" id="user-form-error"></div>
+      <div class="form-group">
+        <label class="form-label" for="uf-name">Full Name</label>
+        <input class="form-input" type="text" id="uf-name" placeholder="Display name" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="uf-email">Email Address</label>
+        <input class="form-input" type="email" id="uf-email" placeholder="user@example.com" />
+      </div>
+      <div class="form-group" id="uf-password-group">
+        <label class="form-label" for="uf-password">Password</label>
+        <input class="form-input" type="password" id="uf-password"
+               placeholder="Min. 8 chars, 1 uppercase, 1 number" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="uf-role">Role</label>
+        <select class="form-select" id="uf-role">
+          <option value="staff">Staff</option>
+          <option value="manager">Manager</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+      <div class="form-group" id="uf-active-group" style="display:none;">
+        <label class="filter-checkbox-wrap" for="uf-active">
+          <input type="checkbox" id="uf-active" checked />
+          Account is active
+        </label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-user-form')">Cancel</button>
+      <button class="btn btn-primary" id="user-form-submit-btn">Create User</button>
+    </div>
+  </div>
+</div>
+
+<!-- Registration Detail / History Modal -->
+<div class="modal-overlay" id="modal-reg-history">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <div class="modal-title">📜 Registration Detail</div>
+      <button class="modal-close" onclick="closeModal('modal-reg-history')">✕</button>
+    </div>
+    <div class="modal-body" id="reg-history-body">
+      <div class="skeleton" style="height:200px;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Workshop Detail / Registrations Modal -->
+<div class="modal-overlay" id="modal-workshop-detail">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <div class="modal-title" id="ws-detail-title">Workshop Detail</div>
+      <button class="modal-close" onclick="closeModal('modal-workshop-detail')">✕</button>
+    </div>
+    <div class="modal-body" id="ws-detail-body">
+      <div class="skeleton" style="height:300px;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
